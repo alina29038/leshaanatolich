@@ -1,0 +1,65 @@
+version: '3.9'
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+      POSTGRES_DB: banking
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  transaction_service:
+    build:
+      context: ./transaction_service
+    container_name: transaction_service
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      DATABASE_URL: "postgresql://postgres:123@postgres:5432/banking"
+
+  transaction_manager_service:
+    build:
+      context: ./transaction_manager_service
+    container_name: transaction_manager_service
+    depends_on:
+      - rabbitmq
+      - transaction_service
+
+  valute_converter_service:
+    build:
+      context: ./valute_converter_service
+    container_name: valute_converter_service
+    depends_on:
+      - redis
+      - rabbitmq
+
+  notification_service:
+    build:
+      context: ./notification_service
+    container_name: notification_service
+    depends_on:
+      - rabbitmq
+
+volumes:
+  postgres_data:
